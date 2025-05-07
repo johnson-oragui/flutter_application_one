@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_one/utils/auth_utils.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  // set optional email for case where previous screen is from succesful register
+  final String? email;
+
+  const LoginScreen({super.key, this.email});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -22,8 +26,15 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
+    // check if email was passed from register screen
+    if (widget.email != null) {
+      _emailController.text = widget.email!;
+    }
+
     _emailController.addListener(_validateEmail);
     _passwordController.addListener(_validatePassword);
+
+    _loadSavedEmail();
 
     _emailFocusNode.addListener(
       () => setState(() {}),
@@ -33,12 +44,19 @@ class _LoginScreenState extends State<LoginScreen> {
     ); // rebuild to reflect focus changes
   }
 
+  Future<void> _loadSavedEmail() async {
+    String? emailSaved = await getSavedEmail();
+    print("emailSaved: $emailSaved");
+    if (emailSaved != null) {
+      _emailController.text = emailSaved;
+    }
+  }
+
   /// Validates email in real-time
   void _validateEmail() {
     final email = _emailController.text;
-    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
     if (!_emailFocusNode.hasFocus) {
-      if (email != "" && !emailRegex.hasMatch(email)) {
+      if (email != "" && !validateEmail(email)) {
         setState(() {
           _emailError = "invalid email";
         });
@@ -55,42 +73,12 @@ class _LoginScreenState extends State<LoginScreen> {
   /// Validates password in real-time
   void _validatePassword() {
     final password = _passwordController.text.trim();
-    final hasUppercase = RegExp(r'[A-Z]');
-    final hasLowercase = RegExp(r'[a-z]');
-    final hasDigit = RegExp(r'\d');
-    final hasSpecialChar = RegExp(r'[!@#\$%^&*(),.?":{}|<>]');
 
     if (!_passwordFocusNode.hasFocus) {
-      if (password != "" && !hasUppercase.hasMatch(password)) {
-        setState(() {
-          _passwordError = "Password must have atleast one upper-case letter";
-        });
-        return;
-      }
-      if (password != "" && !hasLowercase.hasMatch(password)) {
-        setState(() {
-          _passwordError = "Password must have atleast one lower-case letter";
-        });
-        return;
-      }
-      if (password != "" && !hasDigit.hasMatch(password)) {
-        setState(() {
-          _passwordError = "Password must have atleast one digit";
-        });
-        return;
-      }
-      if (password != "" && !hasSpecialChar.hasMatch(password)) {
-        setState(() {
-          _passwordError = "Password must have atleast one special character";
-        });
-        return;
-      }
-      if (password != "" && password.length < 8) {
-        setState(() {
-          _passwordError = "Password must be up to eight(8) in length";
-        });
-        return;
-      }
+      setState(() {
+        _passwordError = validatePassword(password);
+      });
+      return;
     }
 
     setState(() {
@@ -100,7 +88,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   // ignore: unused_element
-  void _login() {
+  void _login() async {
     String email = _emailController.text;
     String password = _passwordController.text;
     if (_emailError != null ||
@@ -109,13 +97,22 @@ class _LoginScreenState extends State<LoginScreen> {
         password == "") {
       return;
     }
-    if (_emailError == null &&
-        email != "" &&
-        _passwordError == null &&
-        password != "") {
-      print('Email: $email');
-      print('Password: $password');
-      // add authentication logic here
+
+    print('Email: $email');
+    print('Password: $password');
+    await saveEmail(email);
+    // add authentication logic here
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    final args =
+        ModalRoute.of(context)!.settings.arguments as Map<String, String>?;
+    print("args $args");
+    if (args != null && args.containsKey('email')) {
+      _emailController.text = args['email']!;
     }
   }
 
@@ -132,8 +129,8 @@ class _LoginScreenState extends State<LoginScreen> {
       appBar: AppBar(title: const Text('Login')),
       body: Center(
         child: Container(
-          // width: MediaQuery.of(context).size.width * 0.5,
-          width: 400,
+          width: MediaQuery.of(context).size.width * 0.8,
+          // width: 400,
           padding: const EdgeInsets.all(16.0),
           child: Form(
             key: _formKey,
@@ -148,6 +145,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     errorText: _emailError,
                   ),
                   keyboardType: TextInputType.emailAddress,
+                  autofocus: true,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
@@ -158,6 +156,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     border: OutlineInputBorder(),
                     errorText: _passwordError,
                   ),
+                  keyboardType: TextInputType.visiblePassword,
                 ),
                 const SizedBox(height: 24),
                 Row(
@@ -166,6 +165,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     ElevatedButton(
                       onPressed: _login,
                       child: const Text('Login'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.pushNamed(context, "/register");
+                      },
+                      child: Text("Register"),
                     ),
                   ],
                 ),
