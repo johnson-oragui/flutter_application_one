@@ -2,6 +2,7 @@ import 'package:flutter_application_one/database/models/last_logged_in_email.dar
 
 import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 final hasUppercase = RegExp(r'[A-Z]');
 final hasLowercase = RegExp(r'[a-z]');
@@ -58,4 +59,21 @@ Future<void> saveEmail(String email) async {
 Future<String?> getSavedEmail() async {
   final box = Hive.box('emails');
   return box.get('last_logged_in');
+}
+
+Future<void> logoutUser() async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  await prefs.remove("access_token");
+  await prefs.remove("user_email");
+  await prefs.remove("user_id");
+}
+
+Future<bool> checkIsLoggedIn() async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  String? accessToken = prefs.getString("access_token");
+  print("accessToken $accessToken");
+  if (accessToken != null) {
+    return true;
+  }
+  return false;
 }
