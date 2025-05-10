@@ -21,6 +21,8 @@ class _RegistrationScreen extends State<RegistrationScreen> {
   final _emailFocusNode = FocusNode();
   final _firstnameFocusNode = FocusNode();
 
+  int _selectedIndex = 0;
+
   final _formKey = GlobalKey<FormState>();
 
   @override
@@ -135,71 +137,192 @@ class _RegistrationScreen extends State<RegistrationScreen> {
     super.dispose();
   }
 
+  Future<void> _handleNavigation(int index) async {
+    // Ensure index is within valid range
+    setState(() => _selectedIndex = index);
+
+    switch (index) {
+      case 0:
+        Navigator.pushNamed(context, '/dashboard');
+        break;
+      case 1:
+        Navigator.pushNamed(context, '/profile');
+        break;
+      case 2:
+        Navigator.pushNamed(context, '/home');
+        break;
+      case 3:
+        await logoutUser();
+        if (context.mounted) {
+          Navigator.pushReplacementNamed(context, '/login');
+        }
+        break;
+      case 4:
+        Navigator.pushReplacementNamed(context, '/login');
+        break;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("Register")),
-      body: Center(
-        child: Container(
-          width: MediaQuery.of(context).size.width * 0.8,
-          padding: const EdgeInsets.all(16.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.max,
+    final isWide = MediaQuery.of(context).size.width >= 600;
+
+    bool isLoggedIn = false;
+
+    checkIsLoggedIn().then((isIn) {
+      isLoggedIn = isIn;
+    });
+
+    // wide screen
+    final destinations = [
+      NavigationRailDestination(
+        icon: Icon(Icons.dashboard_customize_sharp),
+        label: Text('Dashboard'),
+      ),
+      NavigationRailDestination(
+        icon: Icon(Icons.person),
+        label: Text('Profile'),
+      ),
+      NavigationRailDestination(icon: Icon(Icons.home), label: Text('Home')),
+    ];
+
+    // not wide screen
+    List<Widget> children = [
+      const DrawerHeader(
+        decoration: BoxDecoration(color: Colors.blue),
+        margin: EdgeInsets.only(bottom: 5.0),
+        padding: EdgeInsets.only(bottom: 10.0),
+        child: Text('Menu', style: TextStyle(color: Colors.white)),
+      ),
+      ListTile(
+        leading: const Icon(Icons.dashboard_customize_sharp),
+        title: const Text('Dashboard'),
+        onTap: () => _handleNavigation(0),
+      ),
+      ListTile(
+        leading: const Icon(Icons.person),
+        title: const Text('Profile'),
+        onTap: () => _handleNavigation(1),
+      ),
+      ListTile(
+        leading: const Icon(Icons.home),
+        title: const Text('Home'),
+        onTap: () => _handleNavigation(2),
+      ),
+    ];
+
+    // conditionally add icons if user is logged in
+    if (isLoggedIn) {
+      destinations.add(
+        NavigationRailDestination(
+          icon: Icon(Icons.logout_sharp),
+          label: Text('Logout'),
+        ),
+      );
+
+      children.add(
+        ListTile(
+          leading: const Icon(Icons.logout_sharp),
+          title: const Text('Logout'),
+          onTap: () => _handleNavigation(3),
+        ),
+      );
+    }
+    if (!isLoggedIn) {
+      destinations.add(
+        NavigationRailDestination(
+          icon: Icon(Icons.login_sharp),
+          label: Text('Login'),
+        ),
+      );
+
+      children.add(
+        ListTile(
+          leading: const Icon(Icons.login_sharp),
+          title: const Text('Login'),
+          onTap: () => _handleNavigation(4),
+        ),
+      );
+    }
+
+    final formContent = Container(
+      width: MediaQuery.of(context).size.width * 0.8,
+      padding: const EdgeInsets.all(16.0),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.max,
+          children: [
+            TextFormField(
+              controller: _emailController,
+              decoration: InputDecoration(
+                labelText: 'Email',
+                border: OutlineInputBorder(),
+                errorText: _emailError,
+              ),
+              keyboardType: TextInputType.emailAddress,
+              autofocus: true,
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _firstnameController,
+              decoration: InputDecoration(
+                labelText: 'Firstname',
+                border: OutlineInputBorder(),
+                errorText: _firstnameError,
+                focusColor: Color.fromARGB(0, 63, 168, 53),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _passwordController,
+              obscureText: true,
+              decoration: InputDecoration(
+                labelText: 'Password',
+                border: OutlineInputBorder(),
+                errorText: _passwordError,
+              ),
+              keyboardType: TextInputType.visiblePassword,
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                TextFormField(
-                  controller: _emailController,
-                  decoration: InputDecoration(
-                    labelText: 'Email',
-                    border: OutlineInputBorder(),
-                    errorText: _emailError,
-                  ),
-                  keyboardType: TextInputType.emailAddress,
-                  autofocus: true,
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pushNamed(context, "/login");
+                  },
+                  child: const Text('Login'),
                 ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _firstnameController,
-                  decoration: InputDecoration(
-                    labelText: 'Firstname',
-                    border: OutlineInputBorder(),
-                    errorText: _firstnameError,
-                    focusColor: Color.fromARGB(0, 63, 168, 53),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _passwordController,
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    labelText: 'Password',
-                    border: OutlineInputBorder(),
-                    errorText: _passwordError,
-                  ),
-                  keyboardType: TextInputType.visiblePassword,
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.pushNamed(context, "/login");
-                      },
-                      child: const Text('Login'),
-                    ),
-                    ElevatedButton(
-                      onPressed: _register,
-                      child: Text("Register"),
-                    ),
-                  ],
-                ),
+                ElevatedButton(onPressed: _register, child: Text("Register")),
               ],
             ),
-          ),
+          ],
         ),
       ),
+    );
+
+    if (isWide) {
+      return Scaffold(
+        appBar: AppBar(title: const Text("Register")),
+        body: Row(
+          children: [
+            NavigationRail(
+              selectedIndex: _selectedIndex,
+              onDestinationSelected: _handleNavigation,
+              labelType: NavigationRailLabelType.all,
+              destinations: destinations,
+            ),
+            const VerticalDivider(),
+            Expanded(child: SingleChildScrollView(child: formContent)),
+          ],
+        ),
+      );
+    }
+    return Scaffold(
+      appBar: AppBar(title: const Text('Register')),
+      drawer: Drawer(width: 160.0, child: ListView(children: children)),
+      body: Center(child: SingleChildScrollView(child: formContent)),
     );
   }
 }
