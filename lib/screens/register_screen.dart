@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_one/utils/auth_utils.dart';
+
+import 'package:flutter_application_one/services/auth_service.dart';
 
 class RegistrationScreen extends StatefulWidget {
   const RegistrationScreen({super.key});
@@ -47,7 +48,7 @@ class _RegistrationScreen extends State<RegistrationScreen> {
   void _validateEmail() {
     final email = _emailController.text;
     if (!_emailFocusNode.hasFocus) {
-      if (email != "" && !validateEmail(email)) {
+      if (email != "" && !AuthService.validateEmail(email)) {
         setState(() {
           _emailError = "invalid email";
         });
@@ -66,7 +67,7 @@ class _RegistrationScreen extends State<RegistrationScreen> {
     final password = _passwordController.text.trim();
 
     if (!_passwordFocusNode.hasFocus) {
-      String? res = validatePassword(password);
+      String? res = AuthService.validatePassword(password);
       setState(() {
         _passwordError = res;
       });
@@ -83,7 +84,7 @@ class _RegistrationScreen extends State<RegistrationScreen> {
   void _validateFirstname() {
     final firstname = _firstnameController.text;
     if (!_firstnameFocusNode.hasFocus) {
-      String? res = validatename(firstname, 3, 50);
+      String? res = AuthService.validatename(firstname, 3, 50);
       if (res != null) {
         setState(() {
           _firstnameError = "firstname $res";
@@ -152,7 +153,7 @@ class _RegistrationScreen extends State<RegistrationScreen> {
         Navigator.pushNamed(context, '/home');
         break;
       case 3:
-        await logoutUser();
+        await AuthService.logoutUser();
         if (context.mounted) {
           Navigator.pushReplacementNamed(context, '/login');
         }
@@ -169,7 +170,7 @@ class _RegistrationScreen extends State<RegistrationScreen> {
 
     bool isLoggedIn = false;
 
-    checkIsLoggedIn().then((isIn) {
+    AuthService.checkIsLoggedIn().then((isIn) {
       isLoggedIn = isIn;
     });
 
