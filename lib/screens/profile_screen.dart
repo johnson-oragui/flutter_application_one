@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:flutter_application_one/utils/auth_utils.dart';
+import 'package:flutter_application_one/services/auth_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -27,7 +27,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Navigator.pushReplacementNamed(context, '/settings');
         break;
       case 3:
-        await logoutUser();
+        await AuthService.logoutUser();
         if (context.mounted) {
           Navigator.pushReplacementNamed(context, '/login');
         }
@@ -42,7 +42,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     bool isLoggedIn = false;
 
-    checkIsLoggedIn().then((isIn) {
+    AuthService.checkIsLoggedIn().then((isIn) {
       isLoggedIn = isIn;
     });
 

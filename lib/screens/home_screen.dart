@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:flutter_application_one/utils/auth_utils.dart';
+import 'package:flutter_application_one/services/auth_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -27,7 +27,7 @@ class _HomeScreenState extends State<HomeScreen> {
         Navigator.pushReplacementNamed(context, '/settings');
         break;
       case 3:
-        await logoutUser();
+        await AuthService.logoutUser();
         if (context.mounted) {
           Navigator.pushReplacementNamed(context, '/login');
         }
@@ -42,7 +42,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     bool isLoggedIn = false;
 
-    checkIsLoggedIn().then((isIn) {
+    AuthService.checkIsLoggedIn().then((isIn) {
       isLoggedIn = isIn;
     });
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_one/utils/auth_utils.dart';
+
+import 'package:flutter_application_one/services/auth_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -26,7 +27,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         Navigator.pushReplacementNamed(context, '/home');
         break;
       case 3:
-        await logoutUser();
+        await AuthService.logoutUser();
         if (context.mounted) {
           Navigator.pushReplacementNamed(context, '/login');
         }
@@ -46,7 +47,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     bool isLoggedIn = false;
 
-    checkIsLoggedIn().then((isIn) {
+    AuthService.checkIsLoggedIn().then((isIn) {
       isLoggedIn = isIn;
     });
 
