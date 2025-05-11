@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:flutter_application_one/utils/auth_utils.dart';
+import 'package:flutter_application_one/services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   // set optional email for case where previous screen is from succesful register
@@ -50,7 +50,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _loadSavedEmail() async {
-    String? emailSaved = await getSavedEmail();
+    String? emailSaved = await AuthService.getSavedEmail();
     print("emailSaved: $emailSaved");
     if (emailSaved != null) {
       _emailController.text = emailSaved;
@@ -61,7 +61,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void _validateEmail() {
     final email = _emailController.text;
     if (!_emailFocusNode.hasFocus) {
-      if (email != "" && !validateEmail(email)) {
+      if (email != "" && !AuthService.validateEmail(email)) {
         setState(() {
           _emailError = "invalid email";
         });
@@ -81,7 +81,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (!_passwordFocusNode.hasFocus) {
       setState(() {
-        _passwordError = validatePassword(password);
+        _passwordError = AuthService.validatePassword(password);
       });
       return;
     }
@@ -112,7 +112,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     print('Email: $email');
     print('Password: $password');
-    await saveEmail(email);
+    await AuthService.saveEmail(email);
     // Simulate a successful login, and obtain a token
     final String token = "sampleAccessToken";
     final SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -174,7 +174,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     bool isLoggedIn = false;
 
-    checkIsLoggedIn().then((isIn) {
+    AuthService.checkIsLoggedIn().then((isIn) {
       isLoggedIn = isIn;
     });
 
