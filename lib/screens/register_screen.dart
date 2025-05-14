@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_application_one/services/auth_service.dart';
@@ -12,13 +13,16 @@ class RegistrationScreen extends StatefulWidget {
 class _RegistrationScreen extends State<RegistrationScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   final _firstnameController = TextEditingController();
 
   String? _emailError;
   String? _passwordError;
+  String? _confirmPasswordError;
   String? _firstnameError;
 
   final _passwordFocusNode = FocusNode();
+  final _confirmPasswordFocusNode = FocusNode();
   final _emailFocusNode = FocusNode();
   final _firstnameFocusNode = FocusNode();
 
@@ -31,6 +35,7 @@ class _RegistrationScreen extends State<RegistrationScreen> {
     super.initState();
     _emailController.addListener(_validateEmail);
     _passwordController.addListener(_validatePassword);
+    _confirmPasswordController.addListener(_validateConfirmPassword);
     _firstnameController.addListener(_validateFirstname);
 
     _emailFocusNode.addListener(
@@ -42,13 +47,16 @@ class _RegistrationScreen extends State<RegistrationScreen> {
     _firstnameFocusNode.addListener(
       () => setState(() {}),
     ); // rebuild to reflect focus changes
+    _confirmPasswordFocusNode.addListener(
+      () => setState(() {}),
+    ); // rebuild to reflect focus changes
   }
 
   /// Validates email in real-time
   void _validateEmail() {
     final email = _emailController.text;
     if (!_emailFocusNode.hasFocus) {
-      if (email != "" && !AuthService.validateEmail(email)) {
+      if (email != "" && !authService.value.validateEmail(email)) {
         setState(() {
           _emailError = "invalid email";
         });
@@ -67,7 +75,7 @@ class _RegistrationScreen extends State<RegistrationScreen> {
     final password = _passwordController.text.trim();
 
     if (!_passwordFocusNode.hasFocus) {
-      String? res = AuthService.validatePassword(password);
+      String? res = authService.value.validatePassword(password);
       setState(() {
         _passwordError = res;
       });
@@ -80,11 +88,36 @@ class _RegistrationScreen extends State<RegistrationScreen> {
     setState(() => {});
   }
 
+  void _validateConfirmPassword() {
+    final password = _passwordController.text.trim();
+    final confirmPassword = _confirmPasswordController.text.trim();
+    debugPrint("password $password");
+    debugPrint("confirmPassword $confirmPassword");
+
+    if (!_confirmPasswordFocusNode.hasFocus) {
+      if (password != confirmPassword) {
+        setState(() {
+          _confirmPasswordError = "password and confirm password\n must match";
+        });
+        return;
+      }
+      setState(() {
+        _confirmPasswordError = null;
+      });
+      setState(() => {});
+    }
+
+    setState(() {
+      _confirmPasswordError = null;
+    });
+    setState(() => {});
+  }
+
   /// validate first name in real time
   void _validateFirstname() {
     final firstname = _firstnameController.text;
     if (!_firstnameFocusNode.hasFocus) {
-      String? res = AuthService.validatename(firstname, 3, 50);
+      String? res = authService.value.validatename(firstname, 3, 50);
       if (res != null) {
         setState(() {
           _firstnameError = "firstname $res";
@@ -103,31 +136,65 @@ class _RegistrationScreen extends State<RegistrationScreen> {
     setState(() => {});
   }
 
-  void _register() {
-    String email = _emailController.text;
-    String password = _passwordController.text;
-    String firstname = _firstnameController.text;
+  Future<void> _register(BuildContext context) async {
+    try {
+      String email = _emailController.text.trim().toLowerCase();
+      String password = _passwordController.text.trim();
+      String confirmPassword = _confirmPasswordController.text.trim();
+      String firstname = _firstnameController.text.trim();
 
-    if (_emailError != null ||
-        email == "" ||
-        _passwordError != null ||
-        password == "" ||
-        firstname == "" ||
-        _firstnameError != null) {
-      return;
+      if (_emailError != null ||
+          email == "" ||
+          _passwordError != null ||
+          password == "" ||
+          firstname == "" ||
+          _firstnameError != null ||
+          _confirmPasswordError != null ||
+          confirmPassword == "") {
+        debugPrint("confirm password error:  $_confirmPasswordError");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("All fields must be filled")),
+          snackBarAnimationStyle: AnimationStyle(
+            duration: Duration(seconds: 2),
+            curve: Curves.bounceInOut,
+          ),
+        );
+        return;
+      }
+
+      debugPrint('Email: $email');
+      debugPrint('Password: $password');
+      debugPrint('firstname: $firstname');
+
+      UserCredential? newUser = await authService.value.register(
+        email: email,
+        password: password,
+      );
+      var additionalUserInfo = newUser?.additionalUserInfo;
+      debugPrint("additional user info $additionalUserInfo");
+      User? user = newUser?.user;
+      debugPrint("user $user");
+
+      // pass the email to login email field
+      Navigator.pushReplacementNamed(
+        context,
+        "/login",
+        arguments: <String, String>{'email': email},
+      );
+      // add authentication logic here
+    } on FirebaseAuthException catch (e) {
+      if (e.code == "email-already-in-use") {
+        debugPrint("FirebaseAuthException: $e");
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Email already in use.")));
+      }
+    } catch (e) {
+      debugPrint("error: $e");
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Register failed: $e")));
     }
-
-    print('Email: $email');
-    print('Password: $password');
-    print('firstname: $firstname');
-
-    // pass the email to login email field
-    Navigator.pushNamed(
-      context,
-      "/login",
-      arguments: <String, String>{'email': _emailController.text},
-    );
-    // add authentication logic here
   }
 
   @override
@@ -135,6 +202,7 @@ class _RegistrationScreen extends State<RegistrationScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _firstnameController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -153,7 +221,7 @@ class _RegistrationScreen extends State<RegistrationScreen> {
         Navigator.pushNamed(context, '/home');
         break;
       case 3:
-        await AuthService.logoutUser();
+        await authService.value.logoutUser();
         if (context.mounted) {
           Navigator.pushReplacementNamed(context, '/login');
         }
@@ -168,12 +236,6 @@ class _RegistrationScreen extends State<RegistrationScreen> {
   Widget build(BuildContext context) {
     final isWide = MediaQuery.of(context).size.width >= 600;
 
-    bool isLoggedIn = false;
-
-    AuthService.checkIsLoggedIn().then((isIn) {
-      isLoggedIn = isIn;
-    });
-
     // wide screen
     final destinations = [
       NavigationRailDestination(
@@ -185,6 +247,10 @@ class _RegistrationScreen extends State<RegistrationScreen> {
         label: Text('Profile'),
       ),
       NavigationRailDestination(icon: Icon(Icons.home), label: Text('Home')),
+      NavigationRailDestination(
+        icon: Icon(Icons.login_sharp),
+        label: Text('Login'),
+      ),
     ];
 
     // not wide screen
@@ -210,41 +276,12 @@ class _RegistrationScreen extends State<RegistrationScreen> {
         title: const Text('Home'),
         onTap: () => _handleNavigation(2),
       ),
+      ListTile(
+        leading: const Icon(Icons.login_sharp),
+        title: const Text('Login'),
+        onTap: () => _handleNavigation(4),
+      ),
     ];
-
-    // conditionally add icons if user is logged in
-    if (isLoggedIn) {
-      destinations.add(
-        NavigationRailDestination(
-          icon: Icon(Icons.logout_sharp),
-          label: Text('Logout'),
-        ),
-      );
-
-      children.add(
-        ListTile(
-          leading: const Icon(Icons.logout_sharp),
-          title: const Text('Logout'),
-          onTap: () => _handleNavigation(3),
-        ),
-      );
-    }
-    if (!isLoggedIn) {
-      destinations.add(
-        NavigationRailDestination(
-          icon: Icon(Icons.login_sharp),
-          label: Text('Login'),
-        ),
-      );
-
-      children.add(
-        ListTile(
-          leading: const Icon(Icons.login_sharp),
-          title: const Text('Login'),
-          onTap: () => _handleNavigation(4),
-        ),
-      );
-    }
 
     final formContent = Container(
       width: MediaQuery.of(context).size.width * 0.8,
@@ -285,6 +322,17 @@ class _RegistrationScreen extends State<RegistrationScreen> {
               ),
               keyboardType: TextInputType.visiblePassword,
             ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _confirmPasswordController,
+              obscureText: true,
+              decoration: InputDecoration(
+                labelText: 'Confirm Password',
+                border: OutlineInputBorder(),
+                errorText: _confirmPasswordError,
+              ),
+              keyboardType: TextInputType.visiblePassword,
+            ),
             const SizedBox(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -295,7 +343,10 @@ class _RegistrationScreen extends State<RegistrationScreen> {
                   },
                   child: const Text('Login'),
                 ),
-                ElevatedButton(onPressed: _register, child: Text("Register")),
+                ElevatedButton(
+                  onPressed: () => _register(context),
+                  child: Text("Register"),
+                ),
               ],
             ),
           ],
