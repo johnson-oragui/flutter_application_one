@@ -1,6 +1,5 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_application_one/services/auth_service.dart';
 
@@ -50,8 +49,8 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _loadSavedEmail() async {
-    String? emailSaved = await AuthService.getSavedEmail();
-    print("emailSaved: $emailSaved");
+    String? emailSaved = await authService.value.getSavedEmail();
+    debugPrint("emailSaved: $emailSaved");
     if (emailSaved != null) {
       _emailController.text = emailSaved;
     }
@@ -61,7 +60,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void _validateEmail() {
     final email = _emailController.text;
     if (!_emailFocusNode.hasFocus) {
-      if (email != "" && !AuthService.validateEmail(email)) {
+      if (email != "" && !authService.value.validateEmail(email)) {
         setState(() {
           _emailError = "invalid email";
         });
@@ -81,7 +80,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (!_passwordFocusNode.hasFocus) {
       setState(() {
-        _passwordError = AuthService.validatePassword(password);
+        _passwordError = authService.value.validatePassword(password);
       });
       return;
     }
@@ -93,37 +92,65 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   // ignore: unused_element
-  Future<void> _login() async {
-    String email = _emailController.text;
-    String password = _passwordController.text;
-    if (_emailError != null ||
-        email == "" ||
-        _passwordError != null ||
-        password == "") {
-      return;
-    }
-    if (email != "johnson@gmail.com" || password != "Johnson1234#") {
-      setState(() {
-        _emailError = 'Invalid credentials';
-        _passwordError = 'Invalid credentials';
-      });
-      return;
-    }
+  Future<void> _login(BuildContext context) async {
+    try {
+      String email = _emailController.text.trim().toLowerCase();
+      String password = _passwordController.text.trim();
+      if (_emailError != null ||
+          email == "" ||
+          _passwordError != null ||
+          password == "") {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Please completely fill in the fields")),
+        );
+        return;
+      }
 
-    print('Email: $email');
-    print('Password: $password');
-    await AuthService.saveEmail(email);
-    // Simulate a successful login, and obtain a token
-    final String token = "sampleAccessToken";
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setString("access_token", token);
-    await prefs.setString("user_email", email);
-    await prefs.setString("user_id", "1234567890");
+      debugPrint('Email: $email');
+      debugPrint('Password: $password');
 
-    if (context.mounted) {
-      Navigator.pushNamed(context, '/dashboard');
+      UserCredential? user = await authService.value.login(
+        email: email,
+        password: password,
+      );
+      debugPrint("user $user");
+      var addInfo = user?.additionalUserInfo;
+      debugPrint("additional user info $addInfo");
+      String? userId = user?.user!.uid;
+      debugPrint("userId $userId");
+      await authService.value.saveEmail(email);
+      if (await authService.value.getFingerprintLoginOption()) {
+        await authService.value.saveUserEmailAndPassword(email, password);
+      }
+
+      if (context.mounted) {
+        Navigator.pushReplacementNamed(context, '/dashboard');
+      }
+      // add authentication logic here
+    } on FirebaseAuthException catch (e) {
+      if (e.code == "user-not-found") {
+        debugPrint('No user found for that email.');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Login failed. Invalid credentials.")),
+        );
+      } else if (e.code == 'wrong-password') {
+        debugPrint('Wrong password provided.');
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Invalid credentials.")));
+      } else {
+        debugPrint('FirebaseAuthException: ${e.code}');
+      }
+    } catch (e) {
+      debugPrint("Exception occurred: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            "An unexpected Error occurred. Please try again later.",
+          ),
+        ),
+      );
     }
-    // add authentication logic here
   }
 
   @override
@@ -132,7 +159,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final args =
         ModalRoute.of(context)!.settings.arguments as Map<String, String>?;
-    print("args $args");
+    debugPrint("args $args");
     if (args != null && args.containsKey('email')) {
       _emailController.text = args['email']!;
     }
@@ -172,12 +199,6 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     final isWide = MediaQuery.of(context).size.width >= 600;
 
-    bool isLoggedIn = false;
-
-    AuthService.checkIsLoggedIn().then((isIn) {
-      isLoggedIn = isIn;
-    });
-
     // wide screen
     final destinations = [
       NavigationRailDestination(
@@ -189,6 +210,10 @@ class _LoginScreenState extends State<LoginScreen> {
         label: Text('Profile'),
       ),
       NavigationRailDestination(icon: Icon(Icons.home), label: Text('Home')),
+      NavigationRailDestination(
+        icon: Icon(Icons.login_sharp),
+        label: Text('Register'),
+      ),
     ];
 
     // not wide screen
@@ -214,26 +239,12 @@ class _LoginScreenState extends State<LoginScreen> {
         title: const Text('Home'),
         onTap: () => _handleNavigation(2),
       ),
+      ListTile(
+        leading: const Icon(Icons.login_sharp),
+        title: const Text('Register'),
+        onTap: () => _handleNavigation(3),
+      ),
     ];
-
-    // conditionally add icons if user is logged in
-
-    if (!isLoggedIn) {
-      destinations.add(
-        NavigationRailDestination(
-          icon: Icon(Icons.login_sharp),
-          label: Text('Register'),
-        ),
-      );
-
-      children.add(
-        ListTile(
-          leading: const Icon(Icons.login_sharp),
-          title: const Text('Register'),
-          onTap: () => _handleNavigation(3),
-        ),
-      );
-    }
 
     final formContent = Center(
       child: Container(
@@ -270,7 +281,10 @@ class _LoginScreenState extends State<LoginScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  ElevatedButton(onPressed: _login, child: const Text('Login')),
+                  ElevatedButton(
+                    onPressed: () => _login(context),
+                    child: const Text('Login'),
+                  ),
                   ElevatedButton(
                     onPressed: () {
                       Navigator.pushNamed(context, "/register");
