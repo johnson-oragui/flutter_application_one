@@ -49,20 +49,7 @@ class DefaultFirebaseOptions {
     }
   }
 
-  static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyCooTLO5aBO_txXo1DPQd9yfdlNP9NJZoI',
-    appId: '1:368660108349:android:aa472300620986b2978654',
-    messagingSenderId: '368660108349',
-    projectId: 'flutter-first-project-c1cef',
-    storageBucket: 'flutter-first-project-c1cef.firebasestorage.app',
-  );
+  static const FirebaseOptions android = FirebaseOptions();
 
-  static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyDuoiYWL1LaguHVF_m20uOx0i3lWnCUi9M',
-    appId: '1:368660108349:ios:b6ccad081ba545cc978654',
-    messagingSenderId: '368660108349',
-    projectId: 'flutter-first-project-c1cef',
-    storageBucket: 'flutter-first-project-c1cef.firebasestorage.app',
-    iosBundleId: 'com.example.flutterApplication1',
-  );
+  static const FirebaseOptions ios = FirebaseOptions();
 }
